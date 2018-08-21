@@ -14,13 +14,13 @@ Blowfish cipher;
 cipher.set_key(cipher_key);
 
 uint64_t plain_data = ...;
-uint64_t cipiher_data = cipher.encrypt(plain_data);
+uint64_t cipher_data = cipher.encrypt(plain_data);
 ```
 
 **Encrypting data streams**\
 The CFB stream cipher is essentially a wrapper around the block cipher:
 ```c++
-std::srting cipher_key("TheSecretKey");
+std::string cipher_key("TheSecretKey");
 
 Blowfish cipher;
 cipher.set_key(cipher_key);
