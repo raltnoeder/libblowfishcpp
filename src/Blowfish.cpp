@@ -1,6 +1,5 @@
 #include <Blowfish.h>
 #include <string>
-#include <cstring>
 
 const size_t Blowfish::P_BOXES       =  18;
 const size_t Blowfish::S_BOXES       =   4;
@@ -16,30 +15,25 @@ const size_t Blowfish::UNROLLED_STEP = 2;
 Blowfish::Blowfish()
 {
     state = new bf_state;
-
-    std::memcpy(static_cast<void*> (state), static_cast<const void*> (&INIT_STATE),
-                sizeof (bf_state));
+    copy_bf_state(INIT_STATE);
 }
 
 // @throws std::bad_alloc
-Blowfish::Blowfish(const Blowfish& orig)
+Blowfish::Blowfish(const Blowfish& other)
 {
     // Copy the other instance's state
-    is_clear = orig.is_clear;
     state = new bf_state;
-
-    std::memcpy(static_cast<void*> (state), static_cast<const void*> (orig.state),
-                sizeof (bf_state));
+    copy_bf_state(*other.state);
+    is_clear = other.is_clear;
 }
 
-Blowfish& Blowfish::operator=(const Blowfish& orig)
+Blowfish& Blowfish::operator=(const Blowfish& other)
 {
-    if (this != &orig)
+    if (this != &other)
     {
         // Copy the other instance's state
-        is_clear = orig.is_clear;
-        std::memcpy(static_cast<void*> (state), static_cast<const void*> (orig.state),
-                    sizeof (bf_state));
+        copy_bf_state(*other.state);
+        is_clear = other.is_clear;
     }
     return *this;
 }
@@ -47,8 +41,8 @@ Blowfish& Blowfish::operator=(const Blowfish& orig)
 Blowfish::Blowfish(Blowfish&& orig)
 {
     // Move the other instance's state
-    is_clear = orig.is_clear;
     state = orig.state;
+    is_clear = orig.is_clear;
     orig.state = nullptr;
 }
 
@@ -62,8 +56,8 @@ Blowfish& Blowfish::operator=(Blowfish&& orig)
             delete state;
         }
         // Move the other instance's state
-        is_clear = orig.is_clear;
         state = orig.state;
+        is_clear = orig.is_clear;
         orig.state = nullptr;
     }
     return *this;
@@ -84,11 +78,10 @@ Blowfish::~Blowfish() noexcept
 void Blowfish::reinitialize() noexcept
 {
     is_clear = false;
-    memcpy(static_cast<void*> (state), static_cast<const void*> (&INIT_STATE),
-           sizeof (bf_state));
+    copy_bf_state(INIT_STATE);
 }
 
-void Blowfish::clear() noexcept
+void Blowfish::clear() volatile noexcept
 {
     // Clear the P Box
     for (size_t p_index = 0; p_index < P_BOXES; ++p_index)
@@ -175,9 +168,13 @@ void Blowfish::decrypt(uint32_t* const data_l_ref, uint32_t* const data_r_ref) n
 
 void Blowfish::set_key(const std::string& key) noexcept
 {
+    set_key(key.c_str(), key.length());
+}
+
+void Blowfish::set_key(const char* const key, const size_t key_length) noexcept
+{
     is_clear = false;
-    size_t key_length = key.length();
-    const unsigned char* const key_data = reinterpret_cast<const unsigned char*> (key.c_str());
+    const unsigned char* const key_data = reinterpret_cast<const unsigned char*> (key);
 
     size_t key_index = 0;
     for (size_t p_index = 0; p_index < P_BOXES; ++p_index)
@@ -230,6 +227,21 @@ inline uint32_t Blowfish::blowfish_f(const uint32_t value) noexcept
     return result;
 }
 
+inline void Blowfish::copy_bf_state(const bf_state& src_state) volatile noexcept
+{
+    for (size_t p_index = 0; p_index < P_BOXES; ++p_index)
+    {
+        state->p_box[p_index] = src_state.p_box[p_index];
+    }
+
+    for (size_t s_box_index = 0; s_box_index < S_BOXES; ++s_box_index)
+    {
+        for (size_t s_entry_index = 0; s_entry_index < S_BOX_ENTRIES; ++s_entry_index)
+        {
+            state->s_box[s_box_index][s_entry_index] = src_state.s_box[s_box_index][s_entry_index];
+        }
+    }
+}
 
 const Blowfish::bf_state Blowfish::INIT_STATE =
 {

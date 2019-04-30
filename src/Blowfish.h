@@ -12,8 +12,8 @@ class Blowfish
     Blowfish();
 
     // @throws std::bad_alloc
-    Blowfish(const Blowfish& orig);
-    Blowfish& operator=(const Blowfish& orig);
+    Blowfish(const Blowfish& other);
+    Blowfish& operator=(const Blowfish& other);
     Blowfish(Blowfish&& orig);
     Blowfish& operator=(Blowfish&& orig);
 
@@ -27,7 +27,7 @@ class Blowfish
     /**
      * Clears the cipher instance's state by zeroing out the S-boxes and P-boxes
      */
-    virtual void clear() noexcept;
+    virtual void clear() volatile noexcept;
 
     /**
      * Returns the cipher data for a single data block of plain text
@@ -67,11 +67,19 @@ class Blowfish
      */
     virtual void set_key(const std::string& key) noexcept;
 
+    /**
+     * Sets the encryption key by applying the key to the cipher's S-boxes and P-boxes
+     *
+     * @param key The encryption key to apply to the cipher instance
+     * @param key_length The length of the encryption key
+     */
+    virtual void set_key(const char* const key, const size_t key_length) noexcept;
+
   private:
     struct bf_state
     {
-        uint32_t p_box[18];
-        uint32_t s_box[4][256];
+        volatile uint32_t p_box[18];
+        volatile uint32_t s_box[4][256];
     };
 
     bf_state* state {nullptr};
@@ -89,6 +97,7 @@ class Blowfish
     static const size_t UNROLLED_STEP;
 
     inline uint32_t blowfish_f(uint32_t value) noexcept;
+    inline void copy_bf_state(const bf_state& src_state) volatile noexcept;
 };
 
 #endif // BLOWFISH_H
